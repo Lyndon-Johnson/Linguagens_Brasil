@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandioca, Aipim ou Macaxeira? Mapa das Variedades Linguísticas</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#10202f;--sea:#0b1824;--off:#2b4157;--Aipim:#ffb703;--Macaxeira:#06d6a0;--Mandioca:#ef476f;--ink:#f4f7fa}
+html,body{height:100%}
+body{background:radial-gradient(circle at 30% 20%,#183149,var(--bg) 60%);color:var(--ink);font-family:Nunito,sans-serif;overflow:hidden}
+h1,h2,.display{font-family:'Baloo 2',cursive;font-weight:800}
+#app{display:flex;height:100%;flex-direction:column}
+header{padding:.6rem 1.2rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+header h1{font-size:clamp(1.3rem,3vw,2.2rem);margin:0;line-height:1}
+header small{opacity:.75;display:block;font-family:Nunito;font-weight:400;font-size:.85rem}
+.hud{margin-left:auto;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.pill{background:#ffffff14;border-radius:2rem;padding:.3rem .9rem;font-weight:700}
+.leg{display:flex;gap:.4rem;flex-wrap:wrap;margin-right:0.5rem}
+.leg button{border:0;border-radius:2rem;padding:.25rem .8rem;font-weight:700;color:#10202f;opacity:1;transition:opacity .3s}
+.leg button.off{opacity:.3}
+body.desafio-ativo .leg button{opacity:.4;pointer-events:none}
+main{flex:1;position:relative;min-height:0}
+svg#map{width:100%;height:100%;display:block}
+.uf{fill:var(--off);stroke:var(--bg);stroke-width:1.6;stroke-linejoin:round;transition:fill .3s,opacity .5s}
+.uf.has{cursor:pointer}
+.uf.has:hover{filter:brightness(1.25) drop-shadow(0 0 6px #fff8)}
+.uf:focus{outline:none}.uf:focus-visible{stroke:#fff;stroke-width:4}
+.uf.dim{opacity:.12;pointer-events:none}
+.uf.hide{opacity:.04}
+.form-switch.pill {padding-left: 2.5rem;}
+text.lbl{font:800 15px 'Baloo 2';fill:#10202f;text-anchor:middle;pointer-events:none;transition:opacity .4s}
+.zoomed text.lbl{opacity:0}
+.pulse{animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{stroke:#fff;stroke-width:3}}
+@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+#panel{position:absolute;top:0;right:0;bottom:0;width:min(420px,100%);background:#0b1824f0;border-left:4px solid var(--c,#fff);padding:1.4rem;transform:translateX(105%);transition:transform .5s;overflow:auto}
+#panel.open{transform:none}
+.term{font-size:clamp(2.6rem,7vw,4rem);line-height:1;color:var(--c)}
+.who{background:#ffffff10;border-radius:.6rem;padding:.5rem .8rem;margin:.6rem 0}
+#quiz .btn{font-weight:700;margin:.2rem}
+#toast{position:absolute;left:50%;bottom:1rem;transform:translateX(-50%);background:#000c;padding:.5rem 1rem;border-radius:2rem;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+#back{position:absolute;left:1rem;top:.5rem;display:none}
+audio{width:100%}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>Mandioca, Aipim ou Macaxeira?<small>Como você chama este legume onde mora? Clique num estado colorido para entrar nele.</small></h1>
+  <div class="hud">
+    <div class="leg" id="leg"></div>
+    <div class="form-check form-switch pill mb-0"><input class="form-check-input" type="checkbox" id="game"><label class="form-check-label" for="game">Modo desafio</label></div>
+    <span class="pill">⭐ <span id="pts">0</span> pts</span>
+    <span class="pill">🗺️ <span id="seen">0</span>/<span id="tot"></span></span>
+  </div>
+</header>
+<main id="stage">
+  <button id="back" class="btn btn-light btn-sm fw-bold">← Voltar ao mapa</button>
+  <svg id="map" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid meet"></svg>
+  <aside id="panel" aria-live="polite"></aside>
+  <div id="toast"></div>
+</main>
+</div>
+<script>
+const PATHS={"AC": "10,262 50,260 144,294 158,308 116,332 78,332 26,300", "AM": "10,262 26,200 90,196 90,132 102,78 150,72 194,82 220,122 270,132 298,102 320,92 352,162 324,278 284,308 250,278 190,284 144,294 50,260", "RR": "194,82 210,28 276,7 294,32 292,82 298,102 270,132 220,122", "RO": "144,294 190,284 250,278 284,308 282,332 282,386 240,372 186,344 158,308", "AP": "400,66 458,24 480,72 486,102 470,114 446,110", "PA": "400,66 360,72 320,92 352,162 324,278 380,306 484,298 524,220 568,182 570,134 530,124 484,122 470,114 446,110", "MA": "570,134 642,166 634,202 620,252 574,286 546,256 524,220 568,182", "TO": "524,220 546,256 574,286 566,322 564,360 530,374 486,376 484,342 484,298", "MT": "324,278 380,306 484,298 484,342 486,376 470,402 454,442 426,466 370,462 326,438 282,386 282,332 284,308", "GO": "486,376 530,374 564,360 562,392 560,430 532,472 476,498 450,484 426,466 454,442 470,402", "MS": "426,466 450,484 476,498 470,516 448,544 438,562 398,594 360,564 332,554 330,492 326,438 370,462", "PI": "574,286 620,252 634,202 642,166 666,170 672,260 670,294 634,308 616,324 566,322", "CE": "666,170 700,168 744,206 730,236 718,258 698,268 672,260", "RN": "744,206 766,214 786,218 788,242 760,244 730,236", "PB": "730,236 760,244 788,242 794,254 791,262 760,268 740,270 718,258", "PE": "698,268 718,258 740,270 760,268 791,262 793,272 784,292 750,298 728,304 716,298 670,294 672,260", "AL": "784,292 774,308 762,322 728,304 750,298", "SE": "728,304 762,322 750,336 742,344 734,326", "BA": "566,322 616,324 634,308 670,294 716,298 728,304 734,326 742,344 716,370 708,422 696,478 692,472 672,430 646,410 606,398 560,430 562,392 564,360", "MG": "560,430 606,398 646,410 672,430 692,472 666,484 670,524 654,534 636,550 598,560 562,558 540,524 500,512 470,516 476,498 532,472", "ES": "654,534 669,538 686,518 696,478 692,472 666,484 670,524", "RJ": "598,560 596,578 626,572 670,552 669,538 654,534 636,550", "SP": "470,516 500,512 540,524 562,558 598,560 596,578 528,618 496,594 458,566 438,562 448,544", "PR": "528,618 496,594 458,566 438,562 398,594 398,622 414,646 460,636 518,630 522,622", "SC": "414,646 460,636 518,630 520,664 510,686 496,698 478,684 440,660 414,654", "RS": "496,698 478,684 440,660 414,654 380,668 338,716 380,730 420,764 422,786 470,738"};
+const NOMES={AC:'Acre',AL:'Alagoas',AM:'Amazonas',AP:'Amapá',BA:'Bahia',CE:'Ceará',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MG:'Minas Gerais',MS:'Mato Grosso do Sul',MT:'Mato Grosso',PA:'Pará',PB:'Paraíba',PE:'Pernambuco',PI:'Piauí',PR:'Paraná',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RO:'Rondônia',RR:'Roraima',RS:'Rio Grande do Sul',SC:'Santa Catarina',SE:'Sergipe',SP:'São Paulo',TO:'Tocantins'};
+const DADOS={"BA": ["Aipim", "Sofia Farias"], "PE": ["Macaxeira", "Heitor Da Silva"], "ES": ["Aipim", "Victor Matos Laranja"], "PR": ["Mandioca", "Henrique Jesus"], "AL": ["Macaxeira", "Jossyele Cybelle"], "RO": ["Mandioca", "Raquel Souza"], "AC": ["Macaxeira", "Sara Ico"], "RJ": ["Aipim", "Geovanna Braz"], "RS": ["Aipim", "Patricia Cristiane Nerbas"], "SP": ["Mandioca", "Valeria Alves"], "SC": ["Aipim", "Larissa Karine Van Bommel Fronza"], "MG": ["Mandioca", "Ana Laura Pereira Fonseca"], "CE": ["Macaxeira", "Valentina De Sousa"]};
+const TERMOS=['Aipim','Macaxeira','Mandioca'];
+const $=s=>document.querySelector(s), svg=$('#map'), panel=$('#panel');
+let seen=new Set(), pts=0, filtro=null, aberto=null, vb=[0,0,800,800];
+$('#tot').textContent=Object.keys(DADOS).length;
+const NS='http://www.w3.org/2000/svg';
+
+for(const u in PATHS){
+  const p=document.createElementNS(NS,'polygon');
+  p.setAttribute('points',PATHS[u]);p.id='uf-'+u;p.dataset.uf=u;
+  p.setAttribute('class','uf'+(DADOS[u]?' has pulse':''));
+  if(DADOS[u]){p.setAttribute('tabindex',0);p.setAttribute('role','button');p.setAttribute('aria-label',NOMES[u]);}
+  p.addEventListener('click',()=>abrir(u));
+  p.addEventListener('keydown',e=>{if(e.key==='Enter')abrir(u)});
+  svg.appendChild(p);
+}
+
+for(const u in DADOS){
+  const b=box(u),t=document.createElementNS(NS,'text');
+  t.setAttribute('class','lbl');t.setAttribute('x',b.x+b.w/2);t.setAttribute('y',b.y+b.h/2+5);t.textContent=u;svg.appendChild(t);
+}
+
+function box(u){const bb=document.getElementById('uf-'+u).getBBox();return{x:bb.x,y:bb.y,w:bb.width,h:bb.height}}
+
+const leg=$('#leg');
+TERMOS.forEach(t=>{
+  const b=document.createElement('button');
+  b.textContent=`${t} (${Object.values(DADOS).filter(d=>d[0]==t).length})`;
+  b.style.background=`var(--${t})`;
+  b.onclick=()=>{
+    if($('#game').checked) return;
+    filtro=filtro===t?null:t;
+    [...leg.children].forEach((x,i)=>x.classList.toggle('off',filtro&&TERMOS[i]!==filtro));
+    for(const u in DADOS)document.getElementById('uf-'+u).classList.toggle('hide',!!filtro&&DADOS[u][0]!==filtro)
+  };
+  leg.appendChild(b)
+});
+
+function atualizarCores(){
+  const modoDesafio=$('#game').checked;
+  document.body.classList.toggle('desafio-ativo', modoDesafio);
+  if(modoDesafio && filtro){
+    filtro=null;
+    [...leg.children].forEach(x=>x.classList.remove('off'));
+    for(const u in DADOS)document.getElementById('uf-'+u).classList.remove('hide');
+  }
+  for(const u in DADOS){
+    const el=document.getElementById('uf-'+u);
+    if(!el)continue;
+    if(modoDesafio && !seen.has(u)){
+      el.style.fill='var(--off)';
+    }else{
+      el.style.fill=`var(--${DADOS[u][0]})`;
+    }
+  }
+}
+
+$('#game').addEventListener('change', atualizarCores);
+atualizarCores();
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2200)}
+function anim(to,ms=900,done){const from=vb.slice(),t0=performance.now();
+  (function f(n){let k=Math.min(1,(n-t0)/ms);k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    vb=from.map((v,i)=>v+(to[i]-v)*k);svg.setAttribute('viewBox',vb.join(' '));k<1?requestAnimationFrame(f):done&&done()})(t0)}
+
+function abrir(u){
+  if(!DADOS[u]){toast(`${NOMES[u]}: ainda sem respostas coletadas`);return}
+  if(aberto)return;aberto=u;
+  const b=box(u),s=Math.max(b.w,b.h)*1.5,cx=b.x+b.w/2,cy=b.y+b.h/2;
+  const r=svg.getBoundingClientRect(),asp=r.width/r.height,w=s*Math.max(1,asp),h=s*Math.max(1,1/asp);
+  const off=innerWidth>800?w*.22:0;
+  svg.classList.add('zoomed');
+  for(const k in PATHS)document.getElementById('uf-'+k).classList.toggle('dim',k!==u);
+  document.getElementById('uf-'+u).classList.remove('pulse');
+  anim([cx-w/2+off,cy-h/2,w,h],1000,()=>mostrar(u));
+  $('#back').style.display='block';
+}
+
+function mostrar(u){
+  const [termo,nome]=DADOS[u],c=`var(--${termo})`;
+  panel.style.setProperty('--c',c);
+  panel.innerHTML=`<h2 class="mb-0">${NOMES[u]}</h2>
+   <p class="opacity-75 mb-2">Aqui, este legume se chama:</p>
+   <div id="reveal"></div>
+   <div class="who">🎤 Resposta de <b>${nome}</b></div>
+   <div class="mt-3"><b>🔊 Áudios coletados</b>
+    <div class="mt-2">
+      <p class="mb-1 small opacity-75">Áudio 1</p>
+      <audio id="aud1" controls preload="none" src="audios/${u}_1.MP3"></audio>
+      <div id="noaud1" class="small opacity-75 mt-1" style="display:none">Áudio não encontrado em <code>audios/${u}_1.MP3</code>.
+       <label class="btn btn-sm btn-outline-light mt-1">Escolher arquivo<input type="file" accept=".mp3,audio/mpeg" hidden id="pick1"></label></div>
+    </div>
+    <div class="mt-3">
+      <p class="mb-1 small opacity-75">Áudio 2</p>
+      <audio id="aud2" controls preload="none" src="audios/${u}_2.MP3"></audio>
+      <div id="noaud2" class="small opacity-75 mt-1" style="display:none">Áudio não encontrado em <code>audios/${u}_2.MP3</code>.
+       <label class="btn btn-sm btn-outline-light mt-1">Escolher arquivo<input type="file" accept=".mp3,audio/mpeg" hidden id="pick2"></label></div>
+    </div>
+   </div>`;
+
+  const aud1=$('#aud1'), aud2=$('#aud2');
+  aud1.onerror=()=>{$('#noaud1').style.display='block';aud1.style.display='none'};
+  aud2.onerror=()=>{$('#noaud2').style.display='block';aud2.style.display='none'};
+
+  panel.onchange=e=>{
+    if(e.target.id==='pick1' && e.target.files[0]){
+      aud1.src=URL.createObjectURL(e.target.files[0]);
+      aud1.style.display='block';$('#noaud1').style.display='none';aud1.play();
+    }
+    if(e.target.id==='pick2' && e.target.files[0]){
+      aud2.src=URL.createObjectURL(e.target.files[0]);
+      aud2.style.display='block';$('#noaud2').style.display='none';aud2.play();
+    }
+  };
+
+  const rv=$('#reveal');
+  if($('#game').checked&&!seen.has(u)){
+    rv.innerHTML=`<div id="quiz"><p class="fw-bold">Desafio: como chamam por aqui?</p>${TERMOS.map(t=>`<button class="btn btn-outline-light" data-t="${t}">${t}</button>`).join('')}</div>`;
+    rv.onclick=e=>{
+      const t=e.target.dataset.t;if(!t)return;
+      if(t===termo){pts+=10;fim(u,rv,termo,'🎉 Acertou! +10 pontos')}
+      else{e.target.disabled=true;e.target.classList.replace('btn-outline-light','btn-danger');pts=Math.max(0,pts-2);$('#pts').textContent=pts;toast('Ops! −2 pontos. Tente de novo')}
+    };
+  } else fim(u,rv,termo,'');
+  panel.classList.add('open');
+}
+
+function fim(u,rv,termo,msg){
+  seen.add(u);
+  $('#seen').textContent=seen.size;
+  $('#pts').textContent=pts;
+  atualizarCores();
+
+  rv.innerHTML=`<div class="term display">${termo}</div>${msg?`<p class="mt-2 mb-0">${msg}</p>`:''}
+   <p class="small opacity-75 mt-2">${seen.size===Object.keys(DADOS).length?'🏆 Você explorou todos os estados!':'Explore os outros estados para comparar.'}</p>`;
+}
+
+function voltar(){
+  panel.classList.remove('open');
+  $('#back').style.display='none';
+  const a1=$('#aud1'), a2=$('#aud2');
+  a1&&a1.pause(); a2&&a2.pause();
+  setTimeout(()=>{
+    svg.classList.remove('zoomed');
+    for(const k in PATHS)document.getElementById('uf-'+k).classList.remove('dim');
+    for(const k in DADOS)document.getElementById('uf-'+k).classList.add('pulse');
+    anim([0,0,800,800],900,()=>aberto=null)
+  },300);
+}
+
+$('#back').onclick=voltar;
+addEventListener('keydown',e=>{if(e.key==='Escape'&&aberto)voltar()});
+</script>
+</body>
+</html>
